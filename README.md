@@ -13,6 +13,7 @@ and preprocessed before using it.
 원본 데이터는 [kaggle.com](https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset)에서 다운받아 전처리 후 사용하였습니다.
 
 ## about execution result
+![result](https://github.com/sleepyeePanda/COVID19-cases-chart/blob/master/result.png)
 You can check execution result [here](https://youtu.be/V8HG3pkxCGI).
 
 실행 결과는 [여기](https://youtu.be/V8HG3pkxCGI)에서 확인할 수 있습니다.
