@@ -1,0 +1,37 @@
+h1 {
+	font-size:180%;
+    font-weight: normal;
+	margin-top: 5px;
+    margin-bottom: 5px;
+    text-align: center;
+}
+h2 {
+    font-size: 20px;
+    font-weight: 100;
+	font-style: italic;
+	margin-top:5px;
+    margin-bottom:15px;
+    text-align: center;
+}
+#container{
+    margin : 80px auto;
+    width:1500px;
+    height:1000px;
+    background-image:url("coronavirus.jpg");
+    background-repeat:  no-repeat;
+    background-position: 100% 58%;
+    background-size : 30% 25%;
+}
+#chart{
+	width:1500px;
+    height:600px;
+    align-self: center;
+    padding-top:4px;
+}
+text.label{
+	font-size: 18px;
+	font-weight: bold;
+}
+text.category{
+	font-size: 16px;
+}

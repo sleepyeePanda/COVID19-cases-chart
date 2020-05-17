@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+	<div id="container">
+		<h1>Which countries or regions have the most COVID-19 confirmed cases? <span id="date"></span></h1>
+		<h2>Top 10 Countries or Regions by daily accumulated COVID-19 confirmed cases (data from <a href="https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset">kaggle.com</a>)</h2>	
+		<div id="chart"></div>
+	</div>
+	<script>
+
+//updatingBarChart.js
+
+var setup = function(targetID){
+	//Set size of svg element and chart
+	var margin = {top: 0, right: 0, bottom: 0, left: 0},
+		width = 1500 - margin.left - margin.right,
+		height = 600 - margin.top - margin.bottom,
+		rectangleIndent = 150,
+		defaultBarWidth = 2000000;
+
+	//Set up scales
+	var x = d3.scale.linear()
+	  .domain([0,defaultBarWidth])
+	  .range([0,width]);
+
+	var y = d3.scale.ordinal()
+	  .rangeRoundBands([0, height], 0.1, 0);
+
+	//Create SVG element
+	d3.select(targetID).selectAll("svg").remove()
+	var svg = d3.select(targetID).append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+	  .append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+	
+	//Package and export settings
+	var settings = {
+	  margin:margin, width:width, height:height, rectangleIndent:rectangleIndent,
+	  svg:svg, x:x, y:y
+	}
+	return settings;
+}
+
+// java String hashCode
+function hashCode(str) { 
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 2) - hash);
+	}
+  return hash;
+} 
+
+var generateColorCode = function(str){
+  var code = (hashCode(str) & 0x00FFFFFF).toString(16);
+  return "#000000".substring(0, 7 - code.length) + code+ "cc";
+}
+
+var redrawChart = function(targetID, newdata) {
+
+	//Import settings
+	var margin=settings.margin, width=settings.width, height=settings.height, rectangleIndent=settings.rectangleIndent, 
+	svg=settings.svg, x=settings.x, y=settings.y;
+
+	//Reset domains
+	y.domain(newdata.sort(function(a,b){return b.confirmed - a.confirmed;})
+	  .map(function(d) { return d.country; }));
+
+	/////////
+	//ENTER//
+	/////////
+
+	//Bind new data to chart rows 
+
+	//Create chart row and move to below the bottom of the chart
+	var chartRow = svg.selectAll("g.chartRow")
+	  .data(newdata, function(d){ return d.country});
+
+	var newRow = chartRow
+	  .enter()
+	  .append("g")
+	  .attr("class", "chartRow")
+	  .attr("transform", "translate(0," + height + margin.top + margin.bottom + ")");
+
+	//Add rectangles
+	newRow.insert("rect")
+	  .attr("class","bar")
+	  .attr("x", rectangleIndent)
+	  .attr("opacity",0)
+	  //.attr("height", y.rangeBand())
+		.attr("height", 54)
+    .attr("fill", function(d) {return generateColorCode(d.country)})
+	  .attr("width", function(d) { return x(d.confirmed);}) 
+
+    //Add categories
+	newRow.append("text")
+	  .attr("class","category")
+	  .attr("text-overflow","ellipsis")
+	  .attr("y", y.rangeBand()/2)
+	  .attr("opacity",0)
+	  .attr("dy",".35em")
+	  .attr("dx","0.7em")
+	  .text(function(d){return d.country});
+
+	//Add value labels
+	newRow.append("text")
+	  .attr("class","label")
+	  .attr("y", y.rangeBand()/2)
+    .attr("x", function(d){return x(d.confirmed)+rectangleIndent+5;})
+	  .attr("opacity",0)
+	  .attr("dy",".35em")
+	  .attr("dx","0.5em")
+	  .text(function(d){return d.confirmed;}); 
+	
+
+	//////////
+	//UPDATE//
+	//////////
+	
+	//Update bar widths
+	chartRow.select(".bar").transition()
+	  .duration(1000)
+	  .attr("width", function(d) { return x(d.confirmed);})
+	  .attr("opacity",1);
+
+	//Update data labels
+	chartRow.select(".label").transition()
+	  .duration(1000)
+	  .attr("opacity",1)
+		.attr("x", function(d){return x(d.confirmed)+150;})
+	  .tween("text", function(d) { 
+			var i = d3.interpolate(+this.textContent.replace(/\,/g,''), +d.confirmed);
+			return function(t) {this.textContent = Math.round(i(t));};
+			});
+
+	//Fade in categories
+	chartRow.select(".category").transition()
+	  .duration(100)
+	  .attr("opacity",1);
+
+
+	////////
+	//EXIT//
+	////////
+
+	//Fade out and remove exit elements
+	chartRow.exit().transition()
+	    .style("opacity","0")
+	    .attr("transform", "translate(0," + (height + margin.top + margin.bottom) + ")")
+	    .remove();
+
+
+	////////////////
+	//REORDER ROWS//
+	////////////////
+
+	chartRow.transition()
+		.duration(1000)
+		.attr("transform", function(d){ return "translate(0," + y(d.country) + ")"; });
+};
+
+
+var newDate = new Date("2020-01-22T00:00:00");
+var newDateString = null;
+var covidData = d3.map();
+var topData = [];
+
+//Pulls data
+var pullData = function(settings,callback){
+
+    newDateString = ("0"+(newDate.getMonth()+1)).slice(-2)+"/"+("0"+newDate.getDate()).slice(-2)+"/"+newDate.getFullYear();
+
+    var newData = covidData.get(newDateString);
+
+    try{
+        if(topData.length > 0){
+    			newData.forEach(function(d){
+        	var prevConfirmedData = topData.find(x => x.country == d.country);
+        		if(prevConfirmedData){
+            	prevConfirmedData.confirmed = d.confirmed;
+        		}else{
+            	if (topData.length > 0 && topData[0].confirmed < d.confirmed)
+                	topData.push(d);
+        		}
+    		})
+				date.innerText = newDateString;
+    	}else {
+        topData = newData;
+    	}
+    }catch(e){
+      clearInterval(redrawing);
+      return;
+    }
+
+    newDate.setDate(newDate.getDate() + 1);
+
+    topData = formatData(topData);
+    callback(settings, topData);
+}
+
+//Sort data in descending order and take the top 10 values
+var formatData = function(data){
+  return data.sort(function (a, b) {
+		return b.confirmed - a.confirmed;
+    }).slice(0, 10);
+}
+
+
+var redraw = function(settings){
+	pullData(settings,redrawChart);  
+}
+
+//setup
+var settings = setup('#chart');
+var redrawing = null;
+
+d3.csv("accumulated_covid_19_data.csv", function(err, data){
+  if (err) return console.warn(err);
+
+    data.forEach(function(d){
+			var date = d.ObservationDate;
+
+			if (covidData.has(date)){
+					covidData.get(date).push({country : d["Country/Region"], confirmed : d.Confirmed});								
+			}else{
+					covidData.set(date, [{country : d["Country/Region"], confirmed : d.Confirmed}]);
+			}
+		});
+
+		redraw(settings);
+		//Repeat every 1 seconds
+		redrawing = function(){redraw(settings)}
+		setInterval(redrawing, 1000);
+});
+	</script>
+</body>
